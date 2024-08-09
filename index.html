@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EasyGrade - Gabarito Scanner</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>EasyGrade - Leitor de Gabaritos</h1>
+        <p id="camera-permission" style="color: red; display: none;">Por favor, autorize o uso da câmera.</p>
+        <select id="videoSource"></select>
+        <video id="video" width="320" height="240" autoplay></video>
+        <button id="snap">Capturar Foto</button>
+        <canvas id="gabaritoCanvas" width="320" height="240"></canvas>
+        <button id="processButton">Processar Gabarito</button>
+        <div id="results"></div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
