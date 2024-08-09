@@ -1,93 +1,75 @@
-const video = document.getElementById('video');
-const videoSource = document.getElementById('videoSource');
-const cameraPermissionMsg = document.getElementById('camera-permission');
+let matrizRespostas = [];
 
-// Função para iniciar o streaming de vídeo da câmera
-function startVideoStream(deviceId = null) {
-    const constraints = {
-        video: deviceId ? { deviceId: { exact: deviceId } } : true
-    };
-
-    navigator.mediaDevices.getUserMedia(constraints)
-        .then(stream => {
-            video.srcObject = stream;
-            cameraPermissionMsg.style.display = 'none';
-        })
-        .catch(err => {
-            console.error("Erro ao acessar a câmera: ", err);
-            cameraPermissionMsg.style.display = 'block';
-        });
+function showPage(pageId) {
+    document.querySelectorAll('.page').forEach(page => {
+        page.classList.remove('active');
+    });
+    document.getElementById(pageId).classList.add('active');
 }
 
-// Popula a lista de dispositivos de vídeo disponíveis
-function getVideoDevices() {
-    navigator.mediaDevices.enumerateDevices()
-        .then(devices => {
-            const videoDevices = devices.filter(device => device.kind === 'videoinput');
-            videoSource.innerHTML = '';
-            videoDevices.forEach(device => {
-                const option = document.createElement('option');
-                option.value = device.deviceId;
-                option.text = device.label || `Câmera ${videoSource.length + 1}`;
-                videoSource.appendChild(option);
-            });
-
-            if (videoDevices.length > 0) {
-                startVideoStream(videoDevices[0].deviceId); // Inicia com o primeiro dispositivo
-            }
-        })
-        .catch(err => {
-            console.error("Erro ao listar dispositivos: ", err);
-        });
+// Função para leitura do QR code
+function onScanSuccess(decodedText, decodedResult) {
+    document.getElementById("result").innerText = `QR Code detectado: ${decodedText}`;
+    setTimeout(() => {
+        showPage('page-scan-answer-sheet');
+    }, 1000);
 }
 
-// Troca a câmera ao selecionar outro dispositivo
-videoSource.addEventListener('change', function() {
-    startVideoStream(videoSource.value);
-});
+function onScanFailure(error) {
+    // Lógica em caso de erro na leitura do QR Code
+}
 
-// Inicializa a lista de dispositivos de vídeo e solicita permissão
-getVideoDevices();
+let html5QrcodeScanner = new Html5QrcodeScanner(
+    "reader", { fps: 10, qrbox: 250 });
+html5QrcodeScanner.render(onScanSuccess, onScanFailure);
 
-// Captura a foto quando o botão é clicado
-const canvas = document.getElementById('gabaritoCanvas');
-const ctx = canvas.getContext('2d');
-const snapButton = document.getElementById('snap');
+// Função para capturar a imagem da folha de respostas
+function captureImage() {
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const context = canvas.getContext('2d');
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-snapButton.addEventListener('click', function() {
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-});
+    // Processamento básico da imagem para detectar as marcas
+    matrizRespostas = processaImagem(canvas);
+    showPage('page-confirmation');
+}
 
-// Processar a imagem capturada
-document.getElementById('processButton').addEventListener('click', function() {
-    let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+// Função simulada de processamento de imagem
+function processaImagem(canvas) {
+    // Simulação de processamento e retorno de matriz de respostas
+    return [
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [1, 0, 0, 0],
+        [0, 0, 0, 1]
+    ];
+}
 
-    // Convertendo a imagem para escala de cinza
-    cv['onRuntimeInitialized']=()=>{
-        let src = cv.matFromImageData(imageData);
-        let gray = new cv.Mat();
-        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+// Função para confirmar os resultados
+function confirmResults() {
+    document.getElementById("results").innerText = `Respostas confirmadas: ${JSON.stringify(matrizRespostas)}`;
+    showPage('page-results');
+}
 
-        // Thresholding para binarização
-        let thresh = new cv.Mat();
-        cv.threshold(gray, thresh, 128, 255, cv.THRESH_BINARY);
+// Função para exportar os resultados para CSV
+function exportarParaCSV(matriz) {
+    let csvContent = "data:text/csv;charset=utf-8,";
+    matriz.forEach(function(rowArray) {
+        let row = rowArray.join(",");
+        csvContent += row + "\r\n";
+    });
 
-        // Detecção de círculos (representando bolhas de respostas)
-        let circles = new cv.Mat();
-        cv.HoughCircles(thresh, circles, cv.HOUGH_GRADIENT, 1, 20, 100, 30, 10, 30);
+    var encodedUri = encodeURI(csvContent);
+    var link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "resultados_gabarito.csv");
+    document.body.appendChild(link);
 
-        for (let i = 0; i < circles.cols; ++i) {
-            let x = circles.data32F[i * 3];
-            let y = circles.data32F[i * 3 + 1];
-            let radius = circles.data32F[i * 3 + 2];
-            ctx.beginPath();
-            ctx.arc(x, y, radius, 0, 2 * Math.PI);
-            ctx.strokeStyle = '#ff0000';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-        }
+    link.click();
+}
 
-        cv.imshow('gabaritoCanvas', thresh);
-        src.delete(); gray.delete(); thresh.delete(); circles.delete();
-    }
-});
+function finalizar() {
+    alert("Aplicação finalizada.");
+    // Aqui você pode adicionar lógica para finalizar o fluxo
+}
