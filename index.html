@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leitor de Gabaritos</title>
+    <title>Leitor de Gabaritos Simples</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -12,33 +12,29 @@
         <h1>Leitura do QR Code</h1>
         <div id="reader"></div>
         <div id="result"></div>
+        <button onclick="nextPage('page-scan-answer-sheet')">Simular QR Code</button>
     </div>
 
     <!-- Página de escaneamento da folha de respostas -->
     <div id="page-scan-answer-sheet" class="page">
         <h1>Escaneie a Folha de Respostas</h1>
-        <video id="video" width="400" autoplay></video>
+        <video id="video" autoplay></video>
         <button onclick="captureImage()">Capturar Imagem</button>
-        <canvas id="canvas" width="400" height="400"></canvas>
+        <canvas id="canvas"></canvas>
     </div>
 
     <!-- Página de confirmação das respostas -->
     <div id="page-confirmation" class="page">
         <h1>Confirme as Respostas</h1>
-        <div id="confirmation"></div>
-        <button onclick="confirmResults()">Confirmar</button>
+        <button onclick="nextPage('page-results')">Confirmar</button>
     </div>
 
     <!-- Página de resultados -->
     <div id="page-results" class="page">
         <h1>Resultados</h1>
-        <div id="results"></div>
-        <button onclick="exportarParaCSV(matrizRespostas)">Download CSV</button>
-        <button onclick="showPage('page-qr-code')">Ler Outro Gabarito</button>
-        <button onclick="finalizar()">Finalizar</button>
+        <button onclick="nextPage('page-qr-code')">Ler Outro Gabarito</button>
     </div>
 
-    <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
