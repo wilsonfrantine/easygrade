@@ -1,36 +1,53 @@
 let matrizRespostas = [];
+let videoStream;
 
+// Função para mostrar a página correspondente
 function showPage(pageId) {
     document.querySelectorAll('.page').forEach(page => {
         page.classList.remove('active');
     });
     document.getElementById(pageId).classList.add('active');
+
+    // Gerenciar a câmera conforme a página
+    if (pageId === 'page-scan-answer-sheet') {
+        startCamera();
+    } else {
+        stopCamera();
+    }
 }
 
-// Função para leitura do QR code
-function onScanSuccess(decodedText, decodedResult) {
-    document.getElementById("result").innerText = `QR Code detectado: ${decodedText}`;
-    setTimeout(() => {
-        showPage('page-scan-answer-sheet');
-    }, 1000);
+// Função para iniciar a câmera
+function startCamera() {
+    const video = document.getElementById('video');
+
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+            videoStream = stream;
+            video.srcObject = stream;
+            video.play();
+        })
+        .catch(err => {
+            console.error("Erro ao acessar a câmera: ", err);
+            alert("Não foi possível acessar a câmera. Verifique as permissões.");
+        });
 }
 
-function onScanFailure(error) {
-    // Lógica em caso de erro na leitura do QR Code
+// Função para parar a câmera
+function stopCamera() {
+    if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+    }
 }
-
-let html5QrcodeScanner = new Html5QrcodeScanner(
-    "reader", { fps: 10, qrbox: 250 });
-html5QrcodeScanner.render(onScanSuccess, onScanFailure);
 
 // Função para capturar a imagem da folha de respostas
 function captureImage() {
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const context = canvas.getContext('2d');
+
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Processamento básico da imagem para detectar as marcas
+    // Processamento básico da imagem para detectar as marcas (simulado)
     matrizRespostas = processaImagem(canvas);
     showPage('page-confirmation');
 }
@@ -72,4 +89,21 @@ function exportarParaCSV(matriz) {
 function finalizar() {
     alert("Aplicação finalizada.");
     // Aqui você pode adicionar lógica para finalizar o fluxo
+}
+
+// Iniciar o processo de leitura do QR code ao carregar a página
+let html5QrcodeScanner = new Html5QrcodeScanner(
+    "reader", { fps: 10, qrbox: 250 });
+html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+
+// Função para leitura do QR code
+function onScanSuccess(decodedText, decodedResult) {
+    document.getElementById("result").innerText = `QR Code detectado: ${decodedText}`;
+    setTimeout(() => {
+        showPage('page-scan-answer-sheet');
+    }, 1000);
+}
+
+function onScanFailure(error) {
+    // Lógica em caso de erro na leitura do QR Code
 }
