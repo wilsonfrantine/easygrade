@@ -1,6 +1,10 @@
 const video = document.getElementById('video');
 const videoSource = document.getElementById('videoSource');
 const cameraPermissionMsg = document.getElementById('camera-permission');
+const canvas = document.getElementById('gabaritoCanvas');
+const ctx = canvas.getContext('2d');
+const snapButton = document.getElementById('snap');
+const processButton = document.getElementById('processButton');
 
 // Função para iniciar o streaming de vídeo da câmera
 function startVideoStream(deviceId = null) {
@@ -50,44 +54,60 @@ videoSource.addEventListener('change', function() {
 getVideoDevices();
 
 // Captura a foto quando o botão é clicado
-const canvas = document.getElementById('gabaritoCanvas');
-const ctx = canvas.getContext('2d');
-const snapButton = document.getElementById('snap');
-
 snapButton.addEventListener('click', function() {
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    console.log('Imagem capturada e desenhada no canvas');
 });
 
 // Processar a imagem capturada
-document.getElementById('processButton').addEventListener('click', function() {
+processButton.addEventListener('click', function() {
+    console.log('Iniciando processamento do gabarito...');
     let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-    // Convertendo a imagem para escala de cinza
-    cv['onRuntimeInitialized']=()=>{
-        let src = cv.matFromImageData(imageData);
-        let gray = new cv.Mat();
-        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
-
-        // Thresholding para binarização
-        let thresh = new cv.Mat();
-        cv.threshold(gray, thresh, 128, 255, cv.THRESH_BINARY);
-
-        // Detecção de círculos (representando bolhas de respostas)
-        let circles = new cv.Mat();
-        cv.HoughCircles(thresh, circles, cv.HOUGH_GRADIENT, 1, 20, 100, 30, 10, 30);
-
-        for (let i = 0; i < circles.cols; ++i) {
-            let x = circles.data32F[i * 3];
-            let y = circles.data32F[i * 3 + 1];
-            let radius = circles.data32F[i * 3 + 2];
-            ctx.beginPath();
-            ctx.arc(x, y, radius, 0, 2 * Math.PI);
-            ctx.strokeStyle = '#ff0000';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-        }
-
-        cv.imshow('gabaritoCanvas', thresh);
-        src.delete(); gray.delete(); thresh.delete(); circles.delete();
+    if (typeof cv === 'undefined') {
+        console.error('OpenCV.js não carregado');
+        alert('Erro: OpenCV.js não foi carregado corretamente.');
+        return;
     }
+
+    cv['onRuntimeInitialized'] = () => {
+        try {
+            let src = cv.matFromImageData(imageData);
+            let gray = new cv.Mat();
+            cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+            console.log('Imagem convertida para escala de cinza');
+
+            // Thresholding para binarização
+            let thresh = new cv.Mat();
+            cv.threshold(gray, thresh, 128, 255, cv.THRESH_BINARY);
+            console.log('Imagem binarizada');
+
+            // Detecção de círculos (representando bolhas de respostas)
+            let circles = new cv.Mat();
+            cv.HoughCircles(thresh, circles, cv.HOUGH_GRADIENT, 1, 20, 100, 30, 10, 30);
+            console.log(`Círculos detectados: ${circles.cols}`);
+
+            if (circles.cols > 0) {
+                for (let i = 0; i < circles.cols; ++i) {
+                    let x = circles.data32F[i * 3];
+                    let y = circles.data32F[i * 3 + 1];
+                    let radius = circles.data32F[i * 3 + 2];
+                    ctx.beginPath();
+                    ctx.arc(x, y, radius, 0, 2 * Math.PI);
+                    ctx.strokeStyle = '#ff0000';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+                console.log('Círculos desenhados no canvas');
+            } else {
+                console.log('Nenhum círculo foi detectado');
+            }
+
+            cv.imshow('gabaritoCanvas', thresh);
+            src.delete(); gray.delete(); thresh.delete(); circles.delete();
+        } catch (err) {
+            console.error('Erro durante o processamento:', err);
+            alert('Erro durante o processamento da imagem.');
+        }
+    };
 });
