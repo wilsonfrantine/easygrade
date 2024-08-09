@@ -61,6 +61,8 @@ snapButton.addEventListener('click', function() {
 
 // Processar a imagem capturada
 cv['onRuntimeInitialized'] = () => {
+    console.log('OpenCV.js carregado com sucesso');
+    
     processButton.addEventListener('click', function() {
         console.log('Iniciando processamento do gabarito...');
         let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
