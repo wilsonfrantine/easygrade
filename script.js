@@ -60,17 +60,11 @@ snapButton.addEventListener('click', function() {
 });
 
 // Processar a imagem capturada
-processButton.addEventListener('click', function() {
-    console.log('Iniciando processamento do gabarito...');
-    let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+cv['onRuntimeInitialized'] = () => {
+    processButton.addEventListener('click', function() {
+        console.log('Iniciando processamento do gabarito...');
+        let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-    if (typeof cv === 'undefined') {
-        console.error('OpenCV.js não carregado');
-        alert('Erro: OpenCV.js não foi carregado corretamente.');
-        return;
-    }
-
-    cv['onRuntimeInitialized'] = () => {
         try {
             let src = cv.matFromImageData(imageData);
             let gray = new cv.Mat();
@@ -109,5 +103,5 @@ processButton.addEventListener('click', function() {
             console.error('Erro durante o processamento:', err);
             alert('Erro durante o processamento da imagem.');
         }
-    };
-});
+    });
+};
