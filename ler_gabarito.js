@@ -3,6 +3,7 @@ let currentDeviceId = null;
 let processing = false;
 let frameInterval = 500;
 let gabaritoInfo = null; // Variável para armazenar as informações do gabarito após a leitura do QR Code
+let qrCodeDataStored = null; // Variável para armazenar o QR Code
 
 document.getElementById('lerGabarito').addEventListener('click', function () {
     document.getElementById('menu').classList.add('hidden');
@@ -19,6 +20,7 @@ document.querySelectorAll('.voltar').forEach(function(btn) {
         window.scrollTo(0, 0);
         pararCamera();
         gabaritoInfo = null; // Reiniciar as informações do gabarito
+        qrCodeDataStored = null; // Reiniciar o QR Code armazenado
     });
 });
 
@@ -98,11 +100,16 @@ function processarImagem(canvas) {
     let status = "Procurando pelo QR Code...";
 
     if (!gabaritoInfo) {
-        // Passo 1: Procurar pelo QR Code
+        // Aumentar o tamanho da imagem para facilitar a detecção do QR Code
+        const enlarged = new cv.Mat();
+        const fx = 4.0; // Fator de escala horizontal (dobrar o tamanho)
+        const fy = 4.0; // Fator de escala vertical (dobrar o tamanho)
+        cv.resize(src, enlarged, new cv.Size(0, 0), fx, fy, cv.INTER_LINEAR);
+
         const dstCanvas = document.createElement('canvas');
-        dstCanvas.width = src.cols;
-        dstCanvas.height = src.rows;
-        cv.imshow(dstCanvas, src);
+        dstCanvas.width = enlarged.cols;
+        dstCanvas.height = enlarged.rows;
+        cv.imshow(dstCanvas, enlarged);
         const dstContext = dstCanvas.getContext('2d');
         const imageData = dstContext.getImageData(0, 0, dstCanvas.width, dstCanvas.height);
 
@@ -111,6 +118,9 @@ function processarImagem(canvas) {
 
         if (qrCodeData) {
             console.log('QR Code detectado:', qrCodeData.data);
+            // Armazenar o QR Code para processamento posterior
+            qrCodeDataStored = qrCodeData.data;
+
             // Decodificar o QR Code
             const gabaritoCompactado = qrCodeData.data;
             const gabaritoJson = LZString.decompressFromEncodedURIComponent(gabaritoCompactado);
@@ -120,6 +130,9 @@ function processarImagem(canvas) {
         } else {
             status = "Procurando pelo QR Code...";
         }
+
+        // Redefinir o tamanho da imagem
+        enlarged.delete();
     } else {
         // Passo 2: Procurar pelo gabarito (cartão de respostas)
         status = "Procurando pelo cartão de respostas...";
