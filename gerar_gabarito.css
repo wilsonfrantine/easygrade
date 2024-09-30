@@ -1,4 +1,4 @@
-/* Formulário para configurar a questão */
+/* Estilos para o formulário de configuração */
 #questaoForm {
     margin-top: 20px;
 }
@@ -9,18 +9,27 @@
     font-weight: bold;
 }
 
-#questaoForm input, #questaoForm select {
+#questaoForm input,
+#questaoForm select {
     width: 100%;
     padding: 8px;
     margin-top: 5px;
     display: block;
 }
 
-/* Previsualização das alternativas */
+/* Mensagem de erro */
+.mensagem-erro {
+    color: red;
+    font-weight: bold;
+    margin-top: 10px;
+    display: none;
+}
+
+/* Pré-visualização das alternativas */
 #previsualizacaoDiv {
     margin-top: 20px;
     max-height: 60vh;
-    overflow-y: auto; /* Permite rolagem se o conteúdo exceder o espaço disponível */
+    overflow-y: auto;
 }
 
 #previsualizacaoQuestoes {
@@ -28,11 +37,11 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    padding: 10px; /* Adiciona espaçamento interno */
-    border: 1px solid #ccc; /* Adiciona uma borda */
-    border-radius: 4px; /* Adiciona cantos arredondados */
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
     max-height: 100%;
-    overflow-y: auto; /* Garante que a rolagem seja habilitada conforme o conteúdo cresce */
+    overflow-y: auto;
 }
 
 /* Estilo das alternativas */
@@ -74,27 +83,12 @@
     align-items: center;
 }
 
-.alternativa.vf .true {
-    background-color: #d4edda;
-    border-color: #c3e6cb;
-    color: #155724;
-    margin-right: 10px;
-    flex: 1;
-}
-
-.alternativa.vf .false {
-    background-color: #f8d7da;
-    border-color: #f5c6cb;
-    color: #721c24;
-    flex: 1;
-}
-
 .alternativa.vf input[type="radio"] {
     margin-right: 10px;
     display: inline-block;
 }
 
-.alternativa.vf .true:hover, .alternativa.vf .false:hover {
+.alternativa.vf label:hover {
     border-color: #4CAF50;
 }
 
@@ -110,21 +104,6 @@
 }
 
 #questoesUl li {
-    background-color: #f7f7f7;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    padding: 10px;
-    margin-top: 5px;
-}
-
-/* Estilos adicionais para garantir que as seleções estejam separadas */
-#tipoQuestao, #numAlternativas {
-    display: block;
-    margin-bottom: 15px;
-}
-
-/* Estilo para os itens da lista */
-#questoesUl li {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -135,43 +114,50 @@
     border-radius: 4px;
 }
 
-/* Estilo para o texto da questão (alinhado à esquerda) */
+/* Estilo para o texto da questão */
 .questao-text {
-    flex-grow: 1; /* Ocupa o espaço disponível à esquerda */
+    flex-grow: 1;
     text-align: left;
 }
 
-/* Estilo para os botões (alinhados à direita) */
+/* Botões de ação */
 .remove-btn,
 .move-up-btn,
-.move-down-btn {
+.move-down-btn,
+.edit-btn {
     cursor: pointer;
     font-size: 20px;
-    margin-left: 10px; /* Espaço entre os ícones */
+    margin-left: 10px;
     transition: color 0.3s ease;
     display: inline-flex;
     align-items: center;
     color: #4CAF50;
 }
 
-/* Alteração de cor ao passar o mouse */
 .remove-btn:hover {
-    color: #ff0000; /* Cor vermelha para o botão de deletar */
+    color: #ff0000;
 }
 
 .move-up-btn:hover,
-.move-down-btn:hover {
-    color: #388E3C; /* Cor verde escuro para os botões de mover */
+.move-down-btn:hover,
+.edit-btn:hover {
+    color: #388E3C;
 }
 
-
-/* Estilo da legenda */
+/* Legenda */
 .legenda {
     font-size: 0.9em;
     color: #555;
     margin-bottom: 10px;
 }
-/* Estilo do botão "Copiar QR Code" */
+
+.legenda .material-icons {
+    font-size: 18px;
+    vertical-align: middle;
+    color: #4CAF50;
+}
+
+/* Botão de cópia */
 .copy-btn {
     background-color: #f5f5f5;
     border: 1px solid #dcdcdc;
@@ -181,17 +167,17 @@
     cursor: pointer;
     border-radius: 4px;
     transition: background-color 0.3s ease, border-color 0.3s ease;
-    display: inline-flex; /* Para alinhar o ícone e o texto no botão */
+    display: inline-flex;
     align-items: center;
     margin-top: 10px;
 }
 
 .copy-btn .material-icons {
     font-size: 18px;
-    margin-right: 8px; /* Espaçamento entre o ícone e o texto */
+    margin-right: 8px;
 }
 
-.copy-btn:hover { 
+.copy-btn:hover {
     background-color: #e0e0e0;
     border-color: #bdbdbd;
 }
@@ -201,33 +187,42 @@
     border-color: #a0a0a0;
 }
 
-/* Estilo do botão de remover (ícone delete) up and down da lista de questões*/
-.remove-btn {
-    cursor: pointer;
-    font-size: 20px; /* Tamanho do ícone */
-    color: #ff0000;
-    margin-left: 10px;
-    transition: color 0.3s ease;
-    display: flex;
-    align-items: center;
+/* Spinner de carregamento */
+.spinner {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border: 8px solid #f3f3f3;
+    border-top: 8px solid #4CAF50;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: girar 2s linear infinite;
 }
 
-.remove-btn:hover {
-    color: #cc0000;
+@keyframes girar {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
-.move-up-btn,
-.move-down-btn {
-    cursor: pointer;
-    font-size: 20px; /* Tamanho do ícone */
-    color: #4CAF50;
-    margin-left: 10px;
-    transition: color 0.3s ease;
-    display: inline-flex;
-    align-items: center;
+/* Estilos para a folha de gabarito */
+.folha {
+    margin-top: 20px;
+    text-align: center;
 }
 
-.move-up-btn:hover,
-.move-down-btn:hover {
-    color: #388E3C;
+.folha canvas {
+    border: 1px solid #ccc;
+    margin-bottom: 10px;
+}
+
+/* Botão de cópia para o QR Code */
+#qrcode {
+    margin-top: 20px;
+    text-align: center;
 }

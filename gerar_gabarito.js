@@ -6,12 +6,15 @@ document.getElementById('numAlternativas').addEventListener('input', atualizarPr
 
 function atualizarPrevisualizacao() {
     const tipoQuestao = document.getElementById('tipoQuestao').value;
-    const numAlternativas = document.getElementById('numAlternativas').value;
+    const numAlternativas = parseInt(document.getElementById('numAlternativas').value, 10);
 
     const previsualizacaoDiv = document.getElementById('previsualizacaoQuestoes');
     previsualizacaoDiv.innerHTML = '';
 
-    if (!numAlternativas && tipoQuestao !== 'discursiva') {
+    limparMensagemErro();
+
+    if (tipoQuestao !== 'discursiva' && (!numAlternativas || numAlternativas < 2 || numAlternativas > maxAlternativas)) {
+        mostrarMensagemErro('Por favor, insira um número válido de alternativas (2 a ' + maxAlternativas + ').');
         return;
     }
 
@@ -22,7 +25,7 @@ function atualizarPrevisualizacao() {
             alt.classList.add('alternativa');
             alt.innerHTML = `
                 <input type="radio" name="alternativa" value="${i}">
-                ${String.fromCharCode(65 + i)} <!-- A, B, C, etc. -->
+                ${String.fromCharCode(65 + i)}
             `;
             previsualizacaoDiv.appendChild(alt);
         }
@@ -53,7 +56,6 @@ function atualizarPrevisualizacao() {
     }
 }
 
-// Evento para limitar o valor máximo no input de número de alternativas
 document.getElementById('numAlternativas').addEventListener('input', function() {
     if (this.value > maxAlternativas) {
         this.value = maxAlternativas;
@@ -67,41 +69,62 @@ document.getElementById('confirmarQuestao').addEventListener('click', function()
     let corretaVF = [];
 
     if (tipoQuestao === 'multipla') {
-        corretaIndex = [...document.querySelectorAll('input[name="alternativa"]:checked')].map(input => parseInt(input.value, 10));
-        if (corretaIndex.length === 0) {
-            alert('Selecione a alternativa correta.');
+        const selecionada = document.querySelector('input[name="alternativa"]:checked');
+        if (!selecionada) {
+            mostrarMensagemErro('Selecione a alternativa correta.');
             return;
         }
+        corretaIndex = parseInt(selecionada.value, 10);
     } else if (tipoQuestao === 'vf') {
-        corretaVF = [...Array(numAlternativas).keys()].map(i => {
+        for (let i = 0; i < numAlternativas; i++) {
             const selecionada = document.querySelector(`input[name="alternativa${i}"]:checked`);
-            return selecionada ? selecionada.value : null;
-        });
-
-        if (corretaVF.includes(null)) {
-            alert('Selecione V ou F para todas as alternativas.');
-            return;
+            if (!selecionada) {
+                mostrarMensagemErro('Selecione V ou F para todas as alternativas.');
+                return;
+            }
+            corretaVF.push(selecionada.value);
         }
     }
 
+    adicionarQuestao(tipoQuestao, numAlternativas, corretaIndex, corretaVF);
+
+    document.getElementById('questaoForm').reset();
+    document.getElementById('previsualizacaoQuestoes').innerHTML = '';
+    document.getElementById('instrucaoSelecao').classList.add('hidden');
+    limparMensagemErro();
+});
+
+function adicionarQuestao(tipoQuestao, numAlternativas, corretaIndex, corretaVF) {
     const questoesUl = document.getElementById('questoesUl');
     let li = document.createElement('li');
     li.setAttribute('data-key', `Q${questaoIndex}`);
     li.dataset.tipoQuestao = tipoQuestao;
     li.dataset.numAlternativas = numAlternativas;
-    li.dataset.resposta = tipoQuestao === 'multipla' ? corretaIndex[0] : corretaVF.join(',');
+    li.dataset.resposta = tipoQuestao === 'multipla' ? corretaIndex : corretaVF.join(',');
+    li.dataset.questaoIndex = questaoIndex;
+
+    let questaoDescricao = '';
+
+    if (tipoQuestao === 'multipla') {
+        questaoDescricao = `Alternativas: ${numAlternativas}, Resposta: ${String.fromCharCode(65 + corretaIndex)}`;
+    } else if (tipoQuestao === 'vf') {
+        questaoDescricao = `V/F, Resposta: ${corretaVF.join(', ')}`;
+    } else if (tipoQuestao === 'discursiva') {
+        questaoDescricao = 'Discursiva';
+    }
 
     li.innerHTML = `
-    <span class="questao-text">Q${questaoIndex}: ${tipoQuestao === 'discursiva' ? 'Discursiva' : tipoQuestao === 'multipla' ? 'Alternativas: ' + numAlternativas + ', Resposta: ' + String.fromCharCode(65 + corretaIndex[0]) : 'V/F, Resposta: ' + corretaVF.join(', ')}</span>
-    <span class="move-up-btn material-icons">arrow_upward</span>
-    <span class="move-down-btn material-icons">arrow_downward</span>
-    <span class="remove-btn material-icons">delete</span>`;
+    <span class="questao-text">Q${questaoIndex}: ${questaoDescricao}</span>
+    <span class="edit-btn material-icons" aria-label="Editar Questão">edit</span>
+    <span class="move-up-btn material-icons" aria-label="Mover para Cima">arrow_upward</span>
+    <span class="move-down-btn material-icons" aria-label="Mover para Baixo">arrow_downward</span>
+    <span class="remove-btn material-icons" aria-label="Remover Questão">delete</span>`;
 
     questoesUl.appendChild(li);
 
     questaoIndex++;
     atualizarNumerosQuestoes();
-});
+}
 
 document.getElementById('questoesUl').addEventListener('click', function(e) {
     const li = e.target.closest('li');
@@ -121,6 +144,8 @@ document.getElementById('questoesUl').addEventListener('click', function(e) {
             li.parentNode.insertBefore(nextLi, li);
             atualizarNumerosQuestoes();
         }
+    } else if (e.target.classList.contains('edit-btn')) {
+        editarQuestao(li);
     }
 });
 
@@ -131,78 +156,97 @@ function atualizarNumerosQuestoes() {
         const questaoText = li.querySelector('.questao-text');
         questaoText.textContent = questaoText.textContent.replace(/Q\d+/, key);
         li.setAttribute('data-key', key);
+        li.dataset.questaoIndex = index + 1;
     });
 }
 
+function editarQuestao(li) {
+    const tipoQuestao = li.dataset.tipoQuestao;
+    const numAlternativas = parseInt(li.dataset.numAlternativas, 10);
+    const resposta = li.dataset.resposta.split(',');
+
+    document.getElementById('tipoQuestao').value = tipoQuestao;
+    document.getElementById('numAlternativas').value = numAlternativas;
+    atualizarPrevisualizacao();
+
+    if (tipoQuestao === 'multipla') {
+        document.querySelector(`input[name="alternativa"][value="${resposta[0]}"]`).checked = true;
+    } else if (tipoQuestao === 'vf') {
+        for (let i = 0; i < numAlternativas; i++) {
+            document.querySelector(`input[name="alternativa${i}"][value="${resposta[i]}"]`).checked = true;
+        }
+    }
+
+    li.remove();
+    atualizarNumerosQuestoes();
+}
+
 document.getElementById('gerarGabaritoFinal').addEventListener('click', function() {
-    const questoes = document.querySelectorAll('#questoesUl li');
-    const gabarito = {};
+    mostrarSpinner();
+    setTimeout(() => {
+        const questoes = document.querySelectorAll('#questoesUl li');
+        const gabarito = {};
 
-    questoes.forEach((li, index) => {
-        const key = `Q${index + 1}`;
-        gabarito[key] = {
-            tipo: li.dataset.tipoQuestao,
-            alternativas: parseInt(li.dataset.numAlternativas, 10), // Converte para inteiro
-            resposta: parseInt(li.dataset.resposta, 10) // Converte para inteiro
-        };
-    });
+        questoes.forEach((li, index) => {
+            const key = `Q${index + 1}`;
+            const tipoQuestao = li.dataset.tipoQuestao;
+            const numAlternativas = parseInt(li.dataset.numAlternativas, 10);
+            const resposta = tipoQuestao === 'multipla' ? parseInt(li.dataset.resposta, 10) : li.dataset.resposta;
 
-    // Compactar o JSON
-    const gabaritoJson = JSON.stringify(gabarito);
-    const gabaritoCompactado = LZString.compressToEncodedURIComponent(gabaritoJson);
-
-    // Tentativa de gerar QR code em um bloco try-catch para capturar erros de tamanho
-    try {
-        // Gerar o QR code a partir do JSON compactado
-        const qrcodeDiv = document.createElement('div');
-        qrcodeDiv.id = 'qrcode';
-        document.getElementById('gabaritoOutput').appendChild(qrcodeDiv);
-
-        new QRCode(qrcodeDiv, {
-            text: gabaritoCompactado,
-            width: 160,  // Ajuste o tamanho conforme necessário
-            height: 160, // Ajuste o tamanho conforme necessário
-            correctLevel: QRCode.CorrectLevel.H // Nível de correção de erro
+            gabarito[key] = {
+                tipo: tipoQuestao,
+                alternativas: numAlternativas,
+                resposta: resposta
+            };
         });
 
-        // Adicionar botão de cópia para o QR code
-        adicionarBotaoCopiaQR('qrcode');
+        const gabaritoJson = JSON.stringify(gabarito);
+        const gabaritoCompactado = LZString.compressToEncodedURIComponent(gabaritoJson);
 
-        // Chamar a função para gerar o gabarito visual e exibi-lo
-        gerarGabaritoVisual(gabarito);
+        try {
+            const qrcodeDiv = document.createElement('div');
+            qrcodeDiv.id = 'qrcode';
+            document.getElementById('gabaritoOutput').appendChild(qrcodeDiv);
 
-    } catch (error) {
-        console.error('Erro ao gerar QR Code:', error);
-        alert('Erro: O gabarito é muito grande para ser armazenado no QR Code. Reduza o número de questões ou alternativas.');
-        document.getElementById('gabaritoOutput').innerHTML = ""; // Limpa a saída em caso de erro
-    }
+            new QRCode(qrcodeDiv, {
+                text: gabaritoCompactado,
+                width: 160,
+                height: 160,
+                correctLevel: QRCode.CorrectLevel.H
+            });
+
+            adicionarBotaoCopiaQR('qrcode');
+
+            gerarGabaritoVisual(gabarito);
+
+        } catch (error) {
+            console.error('Erro ao gerar QR Code:', error);
+            alert('Erro: O gabarito é muito grande para ser armazenado no QR Code. Reduza o número de questões ou alternativas.');
+            document.getElementById('gabaritoOutput').innerHTML = '';
+        } finally {
+            esconderSpinner();
+        }
+    }, 500);
 });
 
-
 function gerarGabaritoVisual(gabarito) {
-    const gabaritoWidth = 400; // Largura do gabarito em pixels
-    const gabaritoHeight = 800; // Altura do gabarito em pixels
+    const gabaritoWidth = 400;
+    const gabaritoHeight = 800;
     const maxBolhasPorLinha = 5;
-    const maxLinhasPorFolha = 14; // Limite de 14 linhas por folha
+    const maxLinhasPorFolha = 14;
     let folhaIndex = 1;
-
-    let questaoIndex = 0;
     let linhaIndex = 1;
 
-    const margemLateral = 20;
-    const margemVertical = 20;
+    criarNovaFolha(gabaritoWidth, gabaritoHeight, folhaIndex);
 
-    criarNovaFolha(gabaritoWidth, gabaritoHeight, folhaIndex); // Garante que a primeira folha seja criada
-
-    Object.keys(gabarito).forEach((key, index) => {
+    Object.keys(gabarito).forEach((key) => {
         const questao = gabarito[key];
-        const numLinhasNecessarias = Math.ceil(questao.alternativas / maxBolhasPorLinha);
+        const numLinhasNecessarias = questao.tipo === 'discursiva' ? 1 : Math.ceil(questao.alternativas / maxBolhasPorLinha);
 
-        // Verificar se é necessário criar uma nova folha antes de desenhar a próxima linha
-        if (linhaIndex + numLinhasNecessarias > maxLinhasPorFolha) { 
+        if (linhaIndex + numLinhasNecessarias > maxLinhasPorFolha) {
             folhaIndex++;
             criarNovaFolha(gabaritoWidth, gabaritoHeight, folhaIndex);
-            linhaIndex = 1; // Reiniciar a contagem de linhas na nova folha
+            linhaIndex = 1;
         }
 
         const canvas = document.getElementById(`gabaritoCanvas${folhaIndex}`);
@@ -214,6 +258,8 @@ function gerarGabaritoVisual(gabarito) {
         const espacoEntreLinhas = 50;
         const espacoEntreBolhas = 25;
         const fontSize = 16;
+        const margemLateral = 20;
+        const margemVertical = 20;
 
         let y = margemVertical + (linhaIndex * espacoEntreLinhas);
         let x = margemLateral + 50;
@@ -227,19 +273,17 @@ function gerarGabaritoVisual(gabarito) {
             linhaIndex++;
         } else {
             for (let i = 0; i < questao.alternativas; i++) {
-                const letra = String.fromCharCode(65 + i); // A, B, C, etc.
+                const letra = String.fromCharCode(65 + i);
                 if (i > 0 && i % maxBolhasPorLinha === 0) {
                     y += espacoEntreLinhas;
                     x = margemLateral + 50;
                     linhaIndex++;
                 }
 
-                // Desenhar a bolha
                 ctx.beginPath();
                 ctx.arc(x, y - alturaBolha / 2, larguraBolha / 2, 0, 2 * Math.PI);
                 ctx.stroke();
 
-                // Desenhar a letra dentro da bolha
                 ctx.font = `${fontSize}px Arial`;
                 ctx.fillText(letra, x - larguraBolha / 4, y - alturaBolha / 4);
 
@@ -247,11 +291,8 @@ function gerarGabaritoVisual(gabarito) {
             }
             linhaIndex++;
         }
-
-        questaoIndex++;
     });
 
-    // Adicionar botão de cópia para cada folha
     for (let i = 1; i <= folhaIndex; i++) {
         adicionarBotaoCopia(`gabaritoCanvas${i}`);
     }
@@ -270,46 +311,28 @@ function criarNovaFolha(width, height, folhaIndex) {
     const ctx = canvas.getContext('2d');
     const margemLateral = 20;
     const margemVertical = 20;
-    const rectWidth = 60;
-    const rectHeight = 15;
-    const rectMargin = margemLateral + rectWidth;
 
-    // Desenhar a borda preta ao redor da folha
     ctx.strokeStyle = 'black';
-    ctx.lineWidth = 4;  // Define a espessura da borda da folha
+    ctx.lineWidth = 4;
     ctx.strokeRect(0, 0, width, height);
 
-    // Definir a espessura da linha para os retângulos das bolhas
-    ctx.lineWidth = 1;  // Espessura mais fina para as bolhas
+    desenharRetangulo(ctx, margemLateral, margemVertical);
+    desenharRetangulo(ctx, width - margemLateral - 60, margemVertical);
+    desenharRetangulo(ctx, width - margemLateral - 60, height - margemVertical - 15);
+    desenharRetangulo(ctx, margemLateral, height - margemVertical - 15);
 
-    // Desenhar retângulos pretos nos quatro cantos
-    desenharRetangulo(ctx, margemLateral, margemVertical); // Top-left
-    desenharRetangulo(ctx, width - rectMargin, margemVertical); // Top-right
-    desenharRetangulo(ctx, width - rectMargin, height - margemVertical - rectHeight); // Bottom-right
-    desenharRetangulo(ctx, margemLateral, height - margemVertical - rectHeight); // Bottom-left
-
-    // Adicionar o canvas gerado à div de folha
     folhaDiv.appendChild(canvas);
-
-    // Adicionar a folhaDiv gerada à div de saída
     const gabaritoOutputDiv = document.getElementById('gabaritoOutput');
     gabaritoOutputDiv.appendChild(folhaDiv);
 }
 
 function desenharRetangulo(ctx, x, y) {
-    ctx.fillStyle = 'black';
-    ctx.fillRect(x, y, 60, 15);  // Desenha o retângulo sólido
-    ctx.strokeRect(x, y, 60, 15);  // Desenha o contorno do retângulo
-}
-
-function desenharRetangulo(ctx, x, y) {
     const rectWidth = 60;
     const rectHeight = 15;
     ctx.fillStyle = 'black';
-    ctx.fillRect(x, y, rectWidth, rectHeight); // Desenha um retângulo preto
+    ctx.fillRect(x, y, rectWidth, rectHeight);
 }
 
-// Função para adicionar botão de cópia
 function adicionarBotaoCopia(canvasId) {
     const canvas = document.getElementById(canvasId);
     const botaoCopia = document.createElement('button');
@@ -330,7 +353,6 @@ function adicionarBotaoCopia(canvasId) {
     canvas.parentNode.appendChild(botaoCopia);
 }
 
-// Função para adicionar botão de cópia para o QR code
 function adicionarBotaoCopiaQR(qrcodeDivId) {
     const qrcodeDiv = document.getElementById(qrcodeDivId);
     const botaoCopiaQR = document.createElement('button');
@@ -355,4 +377,30 @@ function adicionarBotaoCopiaQR(qrcodeDivId) {
     });
 
     qrcodeDiv.appendChild(botaoCopiaQR);
+}
+
+function mostrarMensagemErro(mensagem) {
+    const erroDiv = document.getElementById('mensagemErro');
+    erroDiv.textContent = mensagem;
+    erroDiv.style.display = 'block';
+}
+
+function limparMensagemErro() {
+    const erroDiv = document.getElementById('mensagemErro');
+    erroDiv.textContent = '';
+    erroDiv.style.display = 'none';
+}
+
+function mostrarSpinner() {
+    const spinner = document.createElement('div');
+    spinner.id = 'spinner';
+    spinner.classList.add('spinner');
+    document.body.appendChild(spinner);
+}
+
+function esconderSpinner() {
+    const spinner = document.getElementById('spinner');
+    if (spinner) {
+        spinner.remove();
+    }
 }

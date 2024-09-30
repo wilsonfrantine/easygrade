@@ -1,30 +1,36 @@
-// Função para mostrar um elemento e esconder outro
+const appState = {
+    currentView: 'menu'
+};
+
 function toggleVisibility(showElementId, hideElementId) {
     document.getElementById(showElementId).classList.remove('hidden');
     document.getElementById(hideElementId).classList.add('hidden');
+    appState.currentView = showElementId;
 }
 
-// Função para inicializar o aplicativo após o DOM estar carregado
 function initApp() {
     document.getElementById('criarGabarito').addEventListener('click', function() {
         toggleVisibility('criarGabaritoDiv', 'menu');
         window.scrollTo(0, 0);
     });
 
+    document.getElementById('lerGabarito').addEventListener('click', function() {
+        toggleVisibility('lerGabaritoDiv', 'menu');
+        window.scrollTo(0, 0);
+    });
+
     document.querySelectorAll('.voltar').forEach(function(btn) {
         btn.addEventListener('click', function() {
-            toggleVisibility('menu', 'lerGabaritoDiv');
-            toggleVisibility('menu', 'criarGabaritoDiv');
+            toggleVisibility('menu', appState.currentView);
             window.scrollTo(0, 0);
         });
     });
 
-    // Captura a imagem do vídeo quando o botão é clicado
     const canvas = document.getElementById('canvas');
     const context = canvas.getContext('2d');
     document.getElementById('capture').addEventListener('click', function() {
         const video = document.getElementById('video');
-        context.drawImage(video, 0, 0, 640, 480);
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
     });
 }
 

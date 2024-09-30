@@ -1,6 +1,8 @@
 let currentStream = null;
 let currentDeviceId = null;
 let processing = false;
+let frameInterval = 500;
+let gabaritoInfo = null; // Variável para armazenar as informações do gabarito após a leitura do QR Code
 
 document.getElementById('lerGabarito').addEventListener('click', function () {
     document.getElementById('menu').classList.add('hidden');
@@ -10,35 +12,41 @@ document.getElementById('lerGabarito').addEventListener('click', function () {
     processarVideo();
 });
 
-document.querySelector('.voltar').addEventListener('click', function () {
-    document.getElementById('lerGabaritoDiv').classList.add('hidden');
-    document.getElementById('menu').classList.remove('hidden');
-    window.scrollTo(0, 0);
-    pararCamera(); // Parar a câmera ao voltar ao menu principal
+document.querySelectorAll('.voltar').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        document.getElementById('lerGabaritoDiv').classList.add('hidden');
+        document.getElementById('menu').classList.remove('hidden');
+        window.scrollTo(0, 0);
+        pararCamera();
+        gabaritoInfo = null; // Reiniciar as informações do gabarito
+    });
 });
 
-function iniciarCamera(deviceId = null) {
-    const video = document.getElementById('video');
-
-    const constraints = {
-        video: deviceId ? { deviceId: { exact: deviceId } } : true
-    };
-
-    navigator.mediaDevices.getUserMedia(constraints)
-        .then(function (stream) {
-            currentStream = stream;
-            currentDeviceId = deviceId;
-            video.srcObject = stream;
-            video.play();
-        })
-        .catch(function (err) {
-            console.error("Erro ao acessar a câmera: ", err);
-        });
+async function iniciarCamera(deviceId = null) {
+    try {
+        const video = document.getElementById('video');
+        const constraints = {
+            video: {
+                width: { ideal: 640 },
+                height: { ideal: 480 },
+                deviceId: deviceId ? { exact: deviceId } : undefined
+            }
+        };
+        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+        currentDeviceId = deviceId;
+        video.srcObject = currentStream;
+        await video.play();
+        console.log('Câmera iniciada com sucesso');
+    } catch (err) {
+        console.error("Erro ao acessar a câmera: ", err);
+        atualizarStatus('Erro ao acessar a câmera. Verifique as permissões.');
+    }
 }
 
 function pararCamera() {
     if (currentStream) {
         currentStream.getTracks().forEach(track => track.stop());
+        console.log('Câmera parada');
     }
 }
 
@@ -47,194 +55,227 @@ document.getElementById('trocarCamera').addEventListener('click', function () {
     listarCameras();
 });
 
-function listarCameras() {
-    navigator.mediaDevices.enumerateDevices()
-        .then(function (devices) {
-            const videoDevices = devices.filter(device => device.kind === 'videoinput');
+async function listarCameras() {
+    try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(device => device.kind === 'videoinput');
 
-            if (videoDevices.length > 1) {
-                const deviceIndex = videoDevices.findIndex(device => device.deviceId === currentDeviceId);
-                const nextDeviceIndex = (deviceIndex + 1) % videoDevices.length;
-                const nextDeviceId = videoDevices[nextDeviceIndex].deviceId;
+        if (videoDevices.length > 1) {
+            const deviceIndex = videoDevices.findIndex(device => device.deviceId === currentDeviceId);
+            const nextDeviceIndex = (deviceIndex + 1) % videoDevices.length;
+            const nextDeviceId = videoDevices[nextDeviceIndex].deviceId;
 
-                iniciarCamera(nextDeviceId);
-            } else {
-                alert('Apenas uma câmera disponível.');
-                iniciarCamera();
-            }
-        })
-        .catch(function (err) {
-            console.error("Erro ao listar câmeras: ", err);
-        });
+            iniciarCamera(nextDeviceId);
+        } else {
+            alert('Apenas uma câmera disponível.');
+            iniciarCamera();
+        }
+    } catch (err) {
+        console.error("Erro ao listar câmeras: ", err);
+    }
 }
 
-// Processar vídeo ao vivo
 function processarVideo() {
     const video = document.getElementById('video');
     const canvas = document.getElementById('canvas');
     const context = canvas.getContext('2d');
 
-    function processFrame() {
+    setInterval(() => {
         if (!video.paused && !video.ended) {
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // Agora processaremos a imagem capturada
             const status = processarImagem(canvas);
 
-            // Atualizar o status na interface
             atualizarStatus(status);
-
-            requestAnimationFrame(processFrame); // Processa o próximo frame
         }
-    }
-
-    requestAnimationFrame(processFrame); // Inicia o processamento contínuo
+    }, frameInterval);
 }
+
 function processarImagem(canvas) {
+    console.log('processarImagem foi chamado');
+
     const src = cv.imread(canvas);
-    const gray = new cv.Mat();
-    const binary = new cv.Mat();
-    const contours = new cv.MatVector();
-    const hierarchy = new cv.Mat();
+    let status = "Procurando pelo QR Code...";
 
-    let status = "Detectando marcas...";
+    if (!gabaritoInfo) {
+        // Passo 1: Procurar pelo QR Code
+        const dstCanvas = document.createElement('canvas');
+        dstCanvas.width = src.cols;
+        dstCanvas.height = src.rows;
+        cv.imshow(dstCanvas, src);
+        const dstContext = dstCanvas.getContext('2d');
+        const imageData = dstContext.getImageData(0, 0, dstCanvas.width, dstCanvas.height);
 
-    // Converter para escala de cinza e aplicar threshold
-    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
-    cv.threshold(gray, binary, 150, 255, cv.THRESH_BINARY_INV);
+        // Usar jsQR para detectar o QR Code
+        const qrCodeData = jsQR(imageData.data, imageData.width, imageData.height);
 
-    // Encontrar contornos na imagem binarizada
-    cv.findContours(binary, contours, hierarchy, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE);
+        if (qrCodeData) {
+            console.log('QR Code detectado:', qrCodeData.data);
+            // Decodificar o QR Code
+            const gabaritoCompactado = qrCodeData.data;
+            const gabaritoJson = LZString.decompressFromEncodedURIComponent(gabaritoCompactado);
+            gabaritoInfo = JSON.parse(gabaritoJson);
 
-    let rects = [];
-    let bolhas = [];
-    for (let i = 0; i < contours.size(); i++) {
-        const contour = contours.get(i);
-        const rect = cv.boundingRect(contour);
-        const area = cv.contourArea(contour);
-
-        // Filtrar potenciais marcadores e bolhas com base na área e proporção
-        const aspectRatio = rect.width / rect.height;
-
-        if (aspectRatio > 2 && aspectRatio < 5 && area > 1000) {
-            // Potencial marcador (retângulo maior)
-            rects.push(rect);
-            cv.rectangle(src, new cv.Point(rect.x, rect.y), new cv.Point(rect.x + rect.width, rect.y + rect.height), [0, 0, 255, 255], 2);
-        } else if (aspectRatio >= 0.8 && aspectRatio <= 1.2 && area > 50 && area < 500) {
-            // Potencial bolha (quase circular)
-            bolhas.push(rect);
-
-            // Verificar o percentual de área preenchida
-            const bolhaPreenchida = verificarBolhaPreenchida(binary, rect);
-            const color = bolhaPreenchida ? [0, 255, 0, 255] : [255, 0, 0, 255]; // Verde se preenchida, vermelho se não
-
-            cv.rectangle(src, new cv.Point(rect.x, rect.y), new cv.Point(rect.x + rect.width, rect.y + rect.height), color, 2);
+            status = "QR Code detectado e gabarito carregado!";
+        } else {
+            status = "Procurando pelo QR Code...";
         }
-    }
-
-    // Verificar se os quatro retângulos (marcadores) foram detectados
-    if (rects.length === 4) {
-        status = "Marcas detectadas com sucesso!";
-        console.log("Marcas detectadas:", rects);
     } else {
-        status = "Marcas não detectadas corretamente.";
-        console.warn("Marcas não detectadas corretamente. Detectado:", rects.length);
-    }
+        // Passo 2: Procurar pelo gabarito (cartão de respostas)
+        status = "Procurando pelo cartão de respostas...";
 
-    // Exibir a imagem com as marcas e bolhas detectadas
-    cv.imshow('canvas', src);
+        const gray = new cv.Mat();
+        const blurred = new cv.Mat();
+        const binary = new cv.Mat();
+        const contours = new cv.MatVector();
+        const hierarchy = new cv.Mat();
+
+        // Pré-processamento da imagem
+        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+        cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0);
+        cv.adaptiveThreshold(blurred, binary, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 11, 2);
+
+        // Exibir a imagem binarizada para depuração
+        cv.imshow('canvasBinary', binary);
+
+        // Encontrar contornos
+        cv.findContours(binary, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+        console.log('Número de contornos encontrados:', contours.size());
+
+        let largestContour = null;
+        let maxArea = 0;
+
+        // Encontrar o contorno com a maior área (presumivelmente o cartão de resposta)
+        for (let i = 0; i < contours.size(); i++) {
+            const contour = contours.get(i);
+            const area = cv.contourArea(contour);
+            console.log(`Contorno ${i}: Área = ${area}`);
+
+            if (area > maxArea) {
+                maxArea = area;
+                largestContour = contour;
+            }
+        }
+
+        if (largestContour && maxArea > 10000) { // Verificar se o contorno é grande o suficiente
+            // Desenhar o contorno maior para visualização
+            let contoursToDraw = new cv.MatVector();
+            contoursToDraw.push_back(largestContour);
+            cv.drawContours(src, contoursToDraw, -1, [0, 255, 0, 255], 3);
+            contoursToDraw.delete();
+
+            cv.imshow('canvas', src);
+
+            // Aproximar o contorno para um polígono
+            const peri = cv.arcLength(largestContour, true);
+            const approx = new cv.Mat();
+            cv.approxPolyDP(largestContour, approx, 0.02 * peri, true);
+
+            console.log('Número de vértices do contorno aproximado:', approx.rows);
+
+            if (approx.rows === 4) {
+                // Ordenar os pontos do polígono
+                const corners = [];
+                for (let i = 0; i < 4; i++) {
+                    corners.push({
+                        x: approx.data32S[i * 2],
+                        y: approx.data32S[i * 2 + 1]
+                    });
+                }
+
+                console.log('Pontos do contorno aproximado:', corners);
+
+                const orderedCorners = ordenarPontos(corners);
+
+                console.log('Pontos ordenados:', orderedCorners);
+
+                // Aplicar transformação de perspectiva
+                const dst = new cv.Mat();
+                const srcCoords = cv.matFromArray(4, 1, cv.CV_32FC2, [
+                    orderedCorners[0].x, orderedCorners[0].y,
+                    orderedCorners[1].x, orderedCorners[1].y,
+                    orderedCorners[2].x, orderedCorners[2].y,
+                    orderedCorners[3].x, orderedCorners[3].y
+                ]);
+
+                const width = 500; // Largura desejada do cartão de resposta transformado
+                const height = 700; // Altura desejada do cartão de resposta transformado
+
+                const dstCoords = cv.matFromArray(4, 1, cv.CV_32FC2, [
+                    0, 0,
+                    width - 1, 0,
+                    width - 1, height - 1,
+                    0, height - 1
+                ]);
+
+                const M = cv.getPerspectiveTransform(srcCoords, dstCoords);
+                cv.warpPerspective(src, dst, M, new cv.Size(width, height));
+
+                // Exibir a imagem transformada para depuração
+                cv.imshow('canvasTransformada', dst);
+
+                // Chamar a função de processamento do gabarito com as informações obtidas do QR Code
+                processarGabarito(dst, gabaritoInfo);
+
+                // Liberar matrizes
+                dst.delete();
+                srcCoords.delete();
+                dstCoords.delete();
+                M.delete();
+                approx.delete();
+
+                status = "Cartão de respostas processado com sucesso!";
+            } else {
+                status = "Contorno principal não é um quadrilátero.";
+                console.log(status);
+                approx.delete();
+            }
+        } else {
+            status = "Cartão de resposta não encontrado.";
+            console.log(status);
+        }
+
+        // Liberação de memória
+        gray.delete();
+        blurred.delete();
+        binary.delete();
+        contours.delete();
+        hierarchy.delete();
+    }
 
     // Liberação de memória
     src.delete();
-    gray.delete();
-    binary.delete();
-    contours.delete();
-    hierarchy.delete();
 
     return status;
 }
 
-// Função para verificar se uma bolha está preenchida
-function verificarBolhaPreenchida(binary, rect) {
-    const roi = binary.roi(rect);
-    const totalPixels = rect.width * rect.height;
-    const filledPixels = cv.countNonZero(roi);
-    roi.delete();
+function ordenarPontos(points) {
+    // Ordenar pontos em ordem específica: top-left, top-right, bottom-right, bottom-left
+    // Baseado nas coordenadas x e y
 
-    const filledRatio = filledPixels / totalPixels;
-    return filledRatio > 0.5; // Considera preenchido se mais de 50% dos pixels forem brancos
-}
+    // Ordenar por y (top to bottom)
+    points.sort((a, b) => a.y - b.y);
 
-function warpImage(src, rects) {
-    const width = 400;
-    const height = 800;
-    
-    const dst = new cv.Mat();
-    const dsize = new cv.Size(width, height);
+    const topPoints = points.slice(0, 2);
+    const bottomPoints = points.slice(2, 4);
 
-    const srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, [
-        rects[0].x, rects[0].y,
-        rects[1].x + rects[1].width, rects[1].y,
-        rects[2].x + rects[2].width, rects[2].y + rects[2].height,
-        rects[3].x, rects[3].y + rects[3].height
-    ]);
+    // Ordenar os pontos superiores por x (left to right)
+    topPoints.sort((a, b) => a.x - b.x);
+    const topLeft = topPoints[0];
+    const topRight = topPoints[1];
 
-    const dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [
-        0, 0,
-        width, 0,
-        width, height,
-        0, height
-    ]);
+    // Ordenar os pontos inferiores por x (left to right)
+    bottomPoints.sort((a, b) => a.x - b.x);
+    const bottomLeft = bottomPoints[0];
+    const bottomRight = bottomPoints[1];
 
-    const M = cv.getPerspectiveTransform(srcTri, dstTri);
-    cv.warpPerspective(src, dst, M, dsize, cv.INTER_LINEAR, cv.BORDER_CONSTANT, new cv.Scalar());
-
-    srcTri.delete();
-    dstTri.delete();
-    M.delete();
-
-    return dst;
+    return [topLeft, topRight, bottomRight, bottomLeft];
 }
 
 function atualizarStatus(mensagem) {
     const statusDiv = document.getElementById('status');
     if (statusDiv) {
         statusDiv.textContent = mensagem;
-    } else {
-        console.error("Div de status não encontrada.");
     }
-}
-
-// Elemento de status na interface
-const statusElement = document.createElement('div');
-statusElement.id = 'status';
-statusElement.style.marginTop = '10px';
-statusElement.style.fontWeight = 'bold';
-document.getElementById('lerGabaritoDiv').appendChild(statusElement);
-
-function detectarBolhas(src) {
-    const gray = new cv.Mat();
-    const binary = new cv.Mat();
-    const contours = new cv.MatVector();
-    const hierarchy = new cv.Mat();
-
-    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
-    cv.threshold(gray, binary, 150, 255, cv.THRESH_BINARY_INV);
-
-    cv.findContours(binary, contours, hierarchy, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE);
-
-    for (let i = 0; i < contours.size(); i++) {
-        const contour = contours.get(i);
-        const rect = cv.boundingRect(contour);
-
-        // Desenhar um quadrado azul ao redor da área da bolha
-        cv.rectangle(src, new cv.Point(rect.x, rect.y), new cv.Point(rect.x + rect.width, rect.y + rect.height), [0, 0, 255, 255], 2);
-    }
-
-    cv.imshow('canvas', src);
-
-    gray.delete();
-    binary.delete();
-    contours.delete();
-    hierarchy.delete();
 }
