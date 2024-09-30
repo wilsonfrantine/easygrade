@@ -100,16 +100,30 @@ function processarImagem(canvas) {
     let status = "Procurando pelo QR Code...";
 
     if (!gabaritoInfo) {
-        // Aumentar o tamanho da imagem para facilitar a detecção do QR Code
-        const enlarged = new cv.Mat();
-        const fx = 4.0; // Fator de escala horizontal (dobrar o tamanho)
-        const fy = 4.0; // Fator de escala vertical (dobrar o tamanho)
-        cv.resize(src, enlarged, new cv.Size(0, 0), fx, fy, cv.INTER_LINEAR);
+        // Converter para escala de cinza
+        const gray = new cv.Mat();
+        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
 
+        // Aplicar equalização de histograma para melhorar o contraste
+        const equalized = new cv.Mat();
+        cv.equalizeHist(gray, equalized);
+
+        // Aplicar filtro de nitidez para melhorar a clareza do QR Code
+        const sharp = new cv.Mat();
+        const kernel = cv.Mat.eye(3, 3, cv.CV_32F);
+        kernel.data32F[4] = 5.0;
+        kernel.data32F[1] = kernel.data32F[3] = kernel.data32F[5] = kernel.data32F[7] = -1.0;
+        cv.filter2D(equalized, sharp, cv.CV_8U, kernel);
+
+        // Aplicar binarização (thresholding) para melhorar a detecção do QR Code
+        const binary = new cv.Mat();
+        cv.threshold(sharp, binary, 150, 255, cv.THRESH_BINARY);
+
+        // Converter a imagem aprimorada para ImageData para usar com jsQR
         const dstCanvas = document.createElement('canvas');
-        dstCanvas.width = enlarged.cols;
-        dstCanvas.height = enlarged.rows;
-        cv.imshow(dstCanvas, enlarged);
+        dstCanvas.width = binary.cols;
+        dstCanvas.height = binary.rows;
+        cv.imshow(dstCanvas, binary);
         const dstContext = dstCanvas.getContext('2d');
         const imageData = dstContext.getImageData(0, 0, dstCanvas.width, dstCanvas.height);
 
@@ -131,8 +145,11 @@ function processarImagem(canvas) {
             status = "Procurando pelo QR Code...";
         }
 
-        // Redefinir o tamanho da imagem
-        enlarged.delete();
+        // Liberação de memória
+        gray.delete();
+        equalized.delete();
+        sharp.delete();
+        binary.delete();
     } else {
         // Passo 2: Procurar pelo gabarito (cartão de respostas)
         status = "Procurando pelo cartão de respostas...";
@@ -262,6 +279,7 @@ function processarImagem(canvas) {
 
     return status;
 }
+
 
 function ordenarPontos(points) {
     // Ordenar pontos em ordem específica: top-left, top-right, bottom-right, bottom-left
