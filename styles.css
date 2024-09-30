@@ -1,0 +1,118 @@
+/* Configurações gerais do corpo e do contêiner */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background-color: #f7f7f7;
+    overflow-y: scroll; /* Garante que a página seja rolável */
+}
+
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Fixar o cabeçalho e o menu no topo */
+#logo-container {
+    position: sticky;
+    top: 0;
+    background-color: white;
+    z-index: 1000;
+    padding: 10px 0;
+    border-bottom: 2px solid #ccc;
+}
+
+#menu {
+    margin-top: 20px;
+    display: flex;
+    justify-content: space-around;
+    background-color: #4CAF50;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.menu-btn {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.3s;
+}
+
+.menu-btn:hover {
+    background-color: #45a049;
+}
+
+/* Logo */
+#logo-container h1 {
+    font-size: 2.5em;
+    margin: 0;
+    color: #4CAF50; /* Cor primária do aplicativo */
+}
+
+#logo-container p {
+    margin: 0;
+    font-size: 1.2em;
+    color: #777;
+}
+
+/* Botões do menu */
+.menu-btn, .action-btn {
+    display: block;
+    width: 100%;
+    margin: 10px 0;
+    padding: 15px;
+    font-size: 1.2em;
+    color: #fff;
+    background-color: #4CAF50;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.menu-btn:hover, .action-btn:hover {
+    background-color: #45a049;
+}
+
+.legenda .material-icons {
+    font-size: 18px; /* Ajuste o tamanho do ícone na legenda */
+    vertical-align: middle; /* Alinha o ícone verticalmente com o texto */
+    color: #ff0000; /* Cor vermelha para manter a consistência com o ícone de exclusão */
+}
+
+
+/* Efeitos de transição para divs */
+.hidden {
+    display: none !important;
+}
+
+#lerGabaritoDiv, #criarGabaritoDiv {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+/* Efeito de fade-in */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .container {
+        width: 90%;
+    }
+
+    video, canvas {
+        width: 100%;
+        height: auto;
+    }
+}

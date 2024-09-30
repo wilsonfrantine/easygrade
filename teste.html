@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detecção de Padrões e Grid com OpenCV.js</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            height: auto;
+            margin: 0;
+            background-color: #f0f0f0;
+            overflow: auto;
+        }
+        video, canvas {
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            max-width: 100%;
+            height: auto;
+        }
+        select {
+            margin-bottom: 20px;
+            padding: 5px;
+            z-index: 10;
+            position: relative;
+        }
+        #results {
+            flex-grow: 1;
+            width: 100%;
+            height: auto;
+            padding: 10px;
+            background-color: #fff;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            margin-top: 20px;
+            box-sizing: border-box;
+            white-space: pre-wrap;
+        }
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+    <video id="webcam" autoplay playsinline style="display: none;"></video>
+    <select id="cameraSelect"></select>
+    <canvas id="canvas"></canvas>
+
+    <!-- Botões para aceitar resultado e ler novamente -->
+    <div>
+        <button id="acceptButton">Confirmar</button>
+        <button id="retryButton">Nova leitura</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script async src="./js/opencv.js" onload="onOpenCvReady();" type="text/javascript"></script>
+    <script src="./js/gabaritoDetector.js" type="text/javascript"></script>
+
+</body>
+</html>
